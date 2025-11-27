@@ -30,16 +30,13 @@ Before you begin, ensure you have the following installed on your system:
 
     *   `APP_USERNAME`: The username for basic authentication (default: `admin`).
     *   `APP_PASSWORD`: The password for basic authentication (default: `password`).
+    *   `TESLACAM_DIR`: The path on your local machine to the directory containing your TeslaCam footage (default: `./teslacam`).
 
 3.  **Add TeslaCam Footage**
 
-    Create a directory named `teslacam` in the root of the project and place your Tesla dashcam footage inside it.
+    By default, the application is configured to look for your Tesla dashcam footage in a directory named `teslacam` at the root of the project.
 
-    ```bash
-    mkdir teslacam
-    ```
-
-    This local `teslacam` directory is mapped as a volume to the `/usr/src/app/teslacam` directory inside the `backend` Docker container. The application reads your footage from this mounted directory.
+    If your footage is located elsewhere, you can specify the path in your `.env` file using the `TESLACAM_DIR` variable. This local directory is then mapped as a volume to the `/usr/src/app/teslacam` directory inside the `backend` Docker container, where the application will read your footage from.
 
 4.  **Run the Application**
 
