@@ -10,7 +10,7 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./teslacam:/usr/src/app/teslacam
+      - ${TESLACAM_DIR:-./teslacam}:/usr/src/app/teslacam
     networks:
       - teslacam-net
     healthcheck:
