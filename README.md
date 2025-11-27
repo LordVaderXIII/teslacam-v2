@@ -39,6 +39,8 @@ Before you begin, ensure you have the following installed on your system:
     mkdir teslacam
     ```
 
+    This local `teslacam` directory is mapped as a volume to the `/usr/src/app/teslacam` directory inside the `backend` Docker container. The application reads your footage from this mounted directory.
+
 4.  **Run the Application**
 
     Use Docker Compose to build and run the application in detached mode:
