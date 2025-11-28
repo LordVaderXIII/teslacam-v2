@@ -1,8 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
-import EventGallery from './components/EventGallery';
-import VideoPlayer from './components/VideoPlayer';
+import MainView from './components/MainView';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
@@ -15,24 +14,16 @@ function App() {
     <Router>
       <div className="App">
         <header className="App-header">
-          <h1><a href="/gallery">TeslaCam Viewer</a></h1>
+          <h1><a href="/main">TeslaCam Viewer</a></h1>
         </header>
         <main>
           <Routes>
             <Route path="/" element={<Login />} />
             <Route 
-              path="/gallery" 
+              path="/main"
               element={
                 <PrivateRoute>
-                  <EventGallery />
-                </PrivateRoute>
-              } 
-            />
-            <Route 
-              path="/player/:eventId" 
-              element={
-                <PrivateRoute>
-                  <VideoPlayer />
+                  <MainView />
                 </PrivateRoute>
               } 
             />
