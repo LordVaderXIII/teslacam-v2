@@ -11,6 +11,7 @@ services:
       - "3001:3001"
     volumes:
       - ${TESLACAM_DIR:-./teslacam}:/usr/src/app/teslacam
+    user: "root"
     networks:
       - teslacam-net
     healthcheck:
