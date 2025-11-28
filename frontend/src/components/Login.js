@@ -27,7 +27,7 @@ const Login = () => {
         // Credentials are valid, store them and proceed
         sessionStorage.setItem('isAuthenticated', 'true');
         sessionStorage.setItem('credentials', credentials);
-        navigate('/gallery');
+        navigate('/main');
       } else if (response.status === 401) {
         setError('Invalid username or password.');
       } else {
