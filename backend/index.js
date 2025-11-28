@@ -1,13 +1,13 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const basicAuth = require('express-basic-auth');
-const path = require('path');
 const chokidar = require('chokidar');
 const fs = require('fs');
 const { spawn } = require('child_process');
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001;
 const TESLACAM_DIR = path.join(__dirname, '../teslacam');
 const EXPORT_DIR = path.join(__dirname, 'exports');
 
@@ -22,20 +22,27 @@ app.get('/api/health', (req, res) => {
 });
 
 let videoEvents = {};
+const clipTypes = ['RecentClips', 'SavedClips', 'SentryClips'];
 
 // --- Initial Synchronous Scan ---
 console.log('Performing initial scan of TeslaCam directory...');
-const initialDirs = fs.readdirSync(TESLACAM_DIR, { withFileTypes: true });
-initialDirs.forEach(dirent => {
-    if (dirent.isDirectory() && dirent.name.match(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/)) {
-        const dirName = dirent.name;
-        console.log(`Found initial event folder: ${dirName}`);
-        videoEvents[dirName] = { id: dirName, timestamp: dirName.replace('_', ' '), cameras: [] };
-        const files = fs.readdirSync(path.join(TESLACAM_DIR, dirName));
-        files.forEach(file => {
-            if (file.endsWith('.mp4')) {
-                const camera = file.split('-').pop().replace('.mp4', '');
-                videoEvents[dirName].cameras.push(camera);
+clipTypes.forEach(clipType => {
+    const clipTypeDir = path.join(TESLACAM_DIR, clipType);
+    if (fs.existsSync(clipTypeDir)) {
+        const initialDirs = fs.readdirSync(clipTypeDir, { withFileTypes: true });
+        initialDirs.forEach(dirent => {
+            if (dirent.isDirectory() && dirent.name.match(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/)) {
+                const dirName = dirent.name;
+                const eventId = `${clipType}__${dirName}`;
+                console.log(`Found initial event folder: ${eventId}`);
+                videoEvents[eventId] = { id: eventId, timestamp: dirName.replace('_', ' '), cameras: [] };
+                const files = fs.readdirSync(path.join(clipTypeDir, dirName));
+                files.forEach(file => {
+                    if (file.endsWith('.mp4')) {
+                        const camera = file.split('-').pop().replace('.mp4', '');
+                        videoEvents[eventId].cameras.push(camera);
+                    }
+                });
             }
         });
     }
@@ -43,32 +50,41 @@ initialDirs.forEach(dirent => {
 console.log('Initial scan complete.');
 
 // --- Asynchronous Watcher for new files ---
-const watcher = chokidar.watch(TESLACAM_DIR, { ignored: /(^|[\/\\])\../, persistent: true, depth: 1 });
+const watcher = chokidar.watch(clipTypes.map(c => path.join(TESLACAM_DIR, c)), { ignored: /(^|[\/\\])\../, persistent: true, depth: 2 });
 
 watcher
   .on('addDir', dirPath => {
     const dirName = path.basename(dirPath);
-    if (!videoEvents[dirName] && dirName.match(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/)) {
-        console.log(`Watcher found new event: ${dirName}`);
-        videoEvents[dirName] = { id: dirName, timestamp: dirName.replace('_', ' '), cameras: [] };
-        fs.readdir(path.join(TESLACAM_DIR, dirName), (err, files) => {
-            if (err) return;
-            files.forEach(file => {
-                if (file.endsWith('.mp4')) {
-                    const camera = file.split('-').pop().replace('.mp4', '');
-                    videoEvents[dirName].cameras.push(camera);
-                }
+    const clipType = path.basename(path.dirname(dirPath));
+    if (clipTypes.includes(clipType) && dirName.match(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/)) {
+        const eventId = `${clipType}__${dirName}`;
+        if (!videoEvents[eventId]) {
+            console.log(`Watcher found new event: ${eventId}`);
+            videoEvents[eventId] = { id: eventId, timestamp: dirName.replace('_', ' '), cameras: [] };
+            fs.readdir(dirPath, (err, files) => {
+                if (err) return;
+                files.forEach(file => {
+                    if (file.endsWith('.mp4')) {
+                        const camera = file.split('-').pop().replace('.mp4', '');
+                        videoEvents[eventId].cameras.push(camera);
+                    }
+                });
             });
-        });
+        }
     }
   })
   .on('unlinkDir', dirPath => {
     const dirName = path.basename(dirPath);
-    if (videoEvents[dirName]) {
-        console.log(`Watcher removed event: ${dirName}`);
-        delete videoEvents[dirName];
+    const clipType = path.basename(path.dirname(dirPath));
+    if (clipTypes.includes(clipType)) {
+        const eventId = `${clipType}__${dirName}`;
+        if (videoEvents[eventId]) {
+            console.log(`Watcher removed event: ${eventId}`);
+            delete videoEvents[eventId];
+        }
     }
   });
+
 
 const appUsername = process.env.APP_USERNAME || 'admin';
 const appPassword = process.env.APP_PASSWORD || 'password';
@@ -81,9 +97,20 @@ app.get('/api/events', (req, res) => {
   res.json(sortedEvents);
 });
 
+app.get('/api/directory-status', (req, res) => {
+  fs.stat(TESLACAM_DIR, (err, stats) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error checking directory status.' });
+    }
+    res.json({ isDirectory: stats.isDirectory(), hasAccess: true });
+  });
+});
+
 app.get('/api/video/:eventId/:camera', (req, res) => {
     const { eventId, camera } = req.params;
-    const eventDir = path.join(TESLACAM_DIR, eventId);
+    const [clipType, dirName] = eventId.split('__');
+    if (!clipTypes.includes(clipType)) return res.status(404).send('Invalid clip type.');
+    const eventDir = path.join(TESLACAM_DIR, clipType, dirName);
     let videoFile = '';
     try {
         const files = fs.readdirSync(eventDir);
@@ -120,7 +147,9 @@ app.post('/api/export', (req, res) => {
     const duration = endTime - startTime;
     const outputFilename = `${eventId}-export-${Date.now()}.mp4`;
     const outputPath = path.join(EXPORT_DIR, outputFilename);
-    const eventDir = path.join(TESLACAM_DIR, eventId);
+    const [clipType, dirName] = eventId.split('__');
+    if (!clipTypes.includes(clipType)) return res.status(400).send('Invalid clip type.');
+    const eventDir = path.join(TESLACAM_DIR, clipType, dirName);
     
     const ffmpegArgs = [];
     const complexFilter = [];

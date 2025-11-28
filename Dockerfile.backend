@@ -1,8 +1,8 @@
-FROM node:18-slim
+# Stage 1: Build the application
+FROM node:18-slim as build
 WORKDIR /usr/src/app/backend
 COPY backend/package*.json ./
 RUN npm install
 COPY backend/ .
-RUN apt-get update && apt-get install -y ffmpeg curl
 EXPOSE 3001
 CMD [ "node", "index.js" ]
