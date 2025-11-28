@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
+    image: lordvaderxiii/teslacam-v2-backend:latest
     env_file:
       - .env
     ports:
@@ -21,9 +19,7 @@ services:
       retries: 5
 
   frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
+    image: lordvaderxiii/teslacam-v2-frontend:latest
     ports:
       - "80:80"
     depends_on:

@@ -7,7 +7,7 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001;
 const TESLACAM_DIR = path.join(__dirname, '../teslacam');
 const EXPORT_DIR = path.join(__dirname, 'exports');
 
@@ -95,6 +95,15 @@ app.use(basicAuth({ users, challenge: true, realm: 'TeslaCamViewer' }));
 app.get('/api/events', (req, res) => {
   const sortedEvents = Object.values(videoEvents).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   res.json(sortedEvents);
+});
+
+app.get('/api/directory-status', (req, res) => {
+  fs.stat(TESLACAM_DIR, (err, stats) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error checking directory status.' });
+    }
+    res.json({ isDirectory: stats.isDirectory(), hasAccess: true });
+  });
 });
 
 app.get('/api/video/:eventId/:camera', (req, res) => {

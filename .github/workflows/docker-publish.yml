@@ -1,0 +1,67 @@
+name: Publish Docker Image
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  push_to_registry:
+    name: Push Docker Image to Docker Hub
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v5
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: |
+            lordvaderxiii/teslacam-v2-backend
+            lordvaderxiii/teslacam-v2-frontend
+
+      - name: Build and push backend Docker image
+        id: push-backend
+        uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
+        with:
+          context: .
+          file: ./Dockerfile.backend
+          push: true
+          tags: lordvaderxiii/teslacam-v2-backend:latest
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Build and push frontend Docker image
+        id: push-frontend
+        uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          push: true
+          tags: lordvaderxiii/teslacam-v2-frontend:latest
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Generate artifact attestation for backend
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: index.docker.io/lordvaderxiii/teslacam-v2-backend
+          subject-digest: ${{ steps.push-backend.outputs.digest }}
+          push-to-registry: true
+
+      - name: Generate artifact attestation for frontend
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: index.docker.io/lordvaderxiii/teslacam-v2-frontend
+          subject-digest: ${{ steps.push-frontend.outputs.digest }}
+          push-to-registry: true
