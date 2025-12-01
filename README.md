@@ -1,6 +1,6 @@
 # TeslaCam V2
 
-This project is a web application for viewing and editing Tesla dashcam footage. It provides a user-friendly interface to watch video clips, customize the layout of the camera feeds, and export merged videos.
+This project is a web application for viewing and editing Tesla dashcam footage. It provides a user-friendly interface to watch video clips, customize the layout of the camera feeds, and export merged videos. It is currently broken, as it is in development. 
 
 ## Prerequisites
 
